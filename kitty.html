@@ -1,0 +1,113 @@
+<script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
+<script lang="javascript">
+  const token = '8b17c15a6041ade4afcc9440fc9e349ca36848e1';
+  const tau = new WebSocket('ws://localhost:8000/ws/twitch-events/');
+  tau.onopen = (event) => {
+    tau.send(`{"token": "${token}"}`);
+  }
+  tau.onmessage = (event) => {
+    const tauEvent = JSON.parse(event.data);
+    console.dir(tauEvent);
+    const eventData = tauEvent.event_data;
+    if (tauEvent.event_type === 'raid') {
+      animations.push(new Raid(eventData.from_broadcaster_user_name, eventData.viewers));
+    }
+  };
+
+  class Cat {
+    xPos
+    yPos
+    age = 0;
+    maxAge = 1;
+    speed = -12
+
+    constructor(xPos, yPos) {
+      this.xPos = xPos;
+      this.yPos = yPos;
+    }
+    reset() {
+      if (this.age < this.maxAge) {
+        this.xPos = xMax;
+        this.age++;
+      } else {
+        this.speed = 0;
+      }
+    }
+    move(distance) {
+      this.xPos += this.speed;
+    }
+  }
+  let font;
+  let textToShow = '-';
+  const fontSize = 160;
+  let width = 1920;
+  let height = 1080;
+  const yMin = -100;
+  const yMax = 700;
+  const xMin = -380;
+  const xMax = 1650;
+  const catSpeed = -12;
+  let animations = [];
+
+  function preload() {
+    font = loadFont('Caskaydia Cove Regular Nerd Font Complete Windows Compatible.otf');
+  }
+
+  function setup() {
+    console.log("setup");
+    this.width = windowWidth;
+    this.height = windowHeight;
+    createCanvas(windowWidth, windowHeight, WEBGL);
+    img = loadImage('kitty2.gif');
+    textFont(font);
+    textSize(fontSize);
+    textAlign(CENTER, CENTER);
+  }
+  function draw() {
+    clear();
+    animations.forEach(anim => {
+      push();
+      anim.animate();
+      pop();
+    });
+    animations = animations.filter(a => !a.isDone());
+  }
+
+  class Raid {
+    _textToShow;
+    _textRotation = 0;
+    _cats = [];
+    _age = 0;
+    _maxAge = 450;
+
+    constructor(user, raiderCount) {
+      this._textToShow = `${user}\nraiding with\n${raiderCount} viewers!`;
+      const catCount = min(raiderCount, 20);
+      for (let index = 0; index < catCount; index++) {
+        this._cats.push(new Cat(xMax - random(100*catCount), yMax - ((yMax - yMin)/catCount) * index));
+      }
+    }
+
+    animate() {
+      push();
+      fill('#ED225D');
+      rotateX(radians(this._textRotation++));
+      text(this._textToShow, 0, 0);
+      pop();
+      translate(-width/2,-height/2,0);
+      this._cats.forEach(cat => {
+        if (cat.xPos > xMin) {
+          cat.move();
+        } else {
+          cat.reset();
+        }
+        image(img, cat.xPos, cat.yPos);
+      });
+      this._age++;
+    }
+
+    isDone() {
+      return this._age > this._maxAge;
+    }
+  }
+</script>

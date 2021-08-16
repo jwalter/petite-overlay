@@ -1,0 +1,129 @@
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css">
+<script src="//unpkg.com/twitch-js@>2.0.0-beta.31"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
+<script src="token.js"></script>
+<script lang="javascript">
+  
+  const username = 'jwalter';
+  const { chat } = new window.TwitchJs({ username, token: twitchToken });
+  let myCircles = [];
+  let players = [];
+  let targetX = 0;
+  let targetWidth;
+  let targetHeight;
+  let highScorer;
+
+  chat.connect().then(globalUserState => {
+    const channel = '#jwalter';    
+    chat.join(channel).then(channelState => {
+      toastr.options = {
+        "positionClass": "toast-bottom-right",
+        "newestOnTop": false,
+      }
+
+      chat.on('PRIVMSG', privateMessage => {
+        console.dir(privateMessage.message);
+        console.log(privateMessage.message.indexOf('!circle'));
+        if (privateMessage.message.indexOf('!circle') === 0) {
+          console.log("Adding circle");
+          myCircles.push(new Circle());
+        } else if(privateMessage.message.indexOf('!drop') === 0) {
+          players.push(new Player(privateMessage.username));
+        }
+      })
+    });
+
+  });
+
+  function setup() {
+    this.width = windowWidth;
+    this.height = windowHeight;
+    this.targetX = windowWidth / 2;
+    this.targetWidth = 200;
+    this.targetHeight = 40;
+    createCanvas(windowWidth, windowHeight);
+  }
+  function draw() {
+    clear();
+    push();
+    myCircles.forEach(c => {
+      fill(c.color);
+      circle(c.x, c.y, c.radius);
+    });
+    pop();
+    push();
+    fill('#ff0000');
+    rect(this.targetX - (this.targetWidth / 2), windowHeight - this.targetHeight, this.targetWidth, this.targetHeight);
+    pop();
+    players.forEach(p => {
+      push();
+      p.draw();
+      pop();
+      if (p.active || !p.loser) {
+        this.updatePlayerState(p);
+      }
+    });
+
+  }
+
+  function updatePlayerState(player) {
+    if (player.y > windowHeight - this.targetHeight) {
+      const distance = abs(this.targetX - player.x);
+      const score = 100 - distance;
+      player.score = round(score, 2);
+      player.active = false;
+      if (this.highScorer === undefined || this.highScorer.score < player.score) {
+        this.highScorer = player;
+      } else if (this.highScorer !== player) {
+        player.loser = true;
+      }
+    }
+  }
+
+  class Player {
+    x = random(windowWidth);
+    y = 0;
+    xSpeed = random(-5, 5);
+    ySpeed = 2;
+    name;
+    active = true;
+    loser = false;
+    color = color(random(255), random(255), random(255));
+    loserColor = color(0, 42);
+
+    constructor(name) {
+      this.name = name;
+    }
+
+    draw() {
+      noStroke();
+      fill(this.loser ? this.loserColor : this.color);
+      circle(this.x, this.y, 50);
+      fill(this.loser ? this.loserColor : color(0));
+      textSize(width / 40);
+      textAlign(CENTER, CENTER);
+      text(this.name, this.x, this.y);
+      if (this.active) {
+        this.y += this.ySpeed;
+        this.x += this.xSpeed;
+        if (this.x < 0) {
+          this.xSpeed = -this.xSpeed;
+        } else if (this.x > windowWidth) {
+          this.xSpeed = -this.xSpeed;
+        }
+      } else {
+        text(this.score, this.x, this.y - 50);
+      }
+    }
+  }
+
+  class Circle {
+    x = random(windowWidth);
+    y = random(windowHeight);
+    radius = random(10, 200);
+    color = color(random(255), random(255), random(255));
+  }
+
+</script>
