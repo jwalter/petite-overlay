@@ -12,7 +12,11 @@
   const World = Matter.World;
   const MBody = Matter.Body;
   const Bodies = Matter.Bodies;
+  const Vertices = Matter.Vertices;
   const Runner = Matter.Runner;
+  const Constraint = Matter.Constraint;
+  const Composite = Matter.Composite;
+  
   const drawBody = Helpers.drawBody;
 
   const username = 'jwalter';
@@ -27,6 +31,7 @@
   let boxA;
   let boxB;
   let rightWall;
+  let leftWall;
   let ground;
   let floor;
 
@@ -47,7 +52,8 @@
         } else if(privateMessage.message.indexOf('!drop') === 0) {
           const newPlayer = new Player(privateMessage.username);
           players.push(newPlayer);
-          World.add(engine.world, newPlayer.pc);
+          World.add(engine.world, newPlayer.comp);
+          // World.add(engine.world, newPlayer.chute);
         }
       })
     });
@@ -72,6 +78,9 @@
     rightWall = Bodies.rectangle(this.width - 10, this.height / 2, 10, this.height, {
       isStatic: true
     });
+    leftWall = Bodies.rectangle(0, this.height / 2, 10, this.height, {
+      isStatic: true
+    });
     floor = Bodies.rectangle(this.width /2 , this.height  - 10, this.width, 10, {
       isStatic: true
     });
@@ -79,7 +88,7 @@
     ground = Bodies.rectangle(400, 500, 810, 10, {
       isStatic: true, angle: Math.PI * 0.06
     });
-    World.add(engine.world, [boxA, boxB, ground, rightWall, floor]);
+    World.add(engine.world, [boxA, boxB, ground, rightWall, leftWall, floor]);
     Runner.run(runner, engine);
   }
   function draw() {
@@ -109,6 +118,7 @@
     fill(128);
     drawBody(ground);
     drawBody(rightWall);
+    drawBody(leftWall);
     drawBody(floor);
   }
 
@@ -137,10 +147,19 @@
     color = color(random(255), random(255), random(255));
     loserColor = color(0, 42);
     pc;
+    comp;
     constructor(name) {
       this.name = name;
-      this.pc = Bodies.circle(this.x, this.y, 25, { restitution: 1});
-      MBody.applyForce(this.pc, Matter.Vector.create(-100, 0), Matter.Vector.create(0, 0));
+      this.pc = Bodies.circle(this.x, this.y, 25, { restitution: 0.5 });
+      this.chute = Bodies.fromVertices(this.x, this.y, Vertices.fromPath('35 7 19 17 14 38 14 58 25 79 45 85 65 84 65 66 46 67 34 59 30 44 33 29 45 23 66 23 66 7 53 7'),
+      { frictionAir: 0.5 });
+      const constraint = Constraint.create({
+        bodyA: this.chute,
+        bodyB: this.pc
+      });
+      // MBody.applyForce(this.pc, Matter.Vector.create(0, 0), Matter.Vector.create(-0.3, 0));
+      this.comp = Composite.create();
+      Composite.add(this.comp, [this.pc, this.chute, constraint]);
     }
 
     draw() {
@@ -148,6 +167,7 @@
       push();
       fill(this.color);
       drawBody(this.pc);
+      drawBody(this.chute);
       fill(color(0));
       textSize(width / 40);
       textAlign(CENTER, CENTER);
