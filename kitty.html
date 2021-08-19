@@ -1,42 +1,22 @@
 <script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
+<script src="libraries/matter.js"></script>
+<script src="libraries/helpers.js"></script>
 <script lang="javascript">
+  const Engine = Matter.Engine;
+  const Render = Matter.Render;
+  const World = Matter.World;
+  const MBody = Matter.Body;
+  const Bodies = Matter.Bodies;
+  const Vertices = Matter.Vertices;
+  const Runner = Matter.Runner;
+  const Constraint = Matter.Constraint;
+  const Composite = Matter.Composite;
+  
+  const drawBody = Helpers.drawBody;
+
   const token = '8b17c15a6041ade4afcc9440fc9e349ca36848e1';
   const tau = new WebSocket('ws://localhost:8000/ws/twitch-events/');
-  tau.onopen = (event) => {
-    tau.send(`{"token": "${token}"}`);
-  }
-  tau.onmessage = (event) => {
-    const tauEvent = JSON.parse(event.data);
-    console.dir(tauEvent);
-    const eventData = tauEvent.event_data;
-    if (tauEvent.event_type === 'raid') {
-      animations.push(new Raid(eventData.from_broadcaster_user_name, eventData.viewers));
-    }
-  };
-
-  class Cat {
-    xPos
-    yPos
-    age = 0;
-    maxAge = 1;
-    speed = -12
-
-    constructor(xPos, yPos) {
-      this.xPos = xPos;
-      this.yPos = yPos;
-    }
-    reset() {
-      if (this.age < this.maxAge) {
-        this.xPos = xMax;
-        this.age++;
-      } else {
-        this.speed = 0;
-      }
-    }
-    move(distance) {
-      this.xPos += this.speed;
-    }
-  }
+  
   let font;
   let textToShow = '-';
   const fontSize = 160;
@@ -48,6 +28,23 @@
   const xMax = 1650;
   const catSpeed = -12;
   let animations = [];
+  let myFloor;
+
+  tau.onopen = (event) => {
+    tau.send(`{"token": "${token}"}`);
+  }
+  tau.onmessage = (event) => {
+    const tauEvent = JSON.parse(event.data);
+    console.dir(tauEvent);
+    const eventData = tauEvent.event_data;
+    if (tauEvent.event_type === 'raid') {
+      animations.push(new Raid(eventData.from_broadcaster_user_name, eventData.viewers));
+    } else if (tauEvent.event_type === 'follow') {
+      const follow = new Follow(eventData.user_name);
+      animations.push(follow);
+      World.add(engine.world, follow.comp);
+    }
+  };
 
   function preload() {
     font = loadFont('Caskaydia Cove Regular Nerd Font Complete Windows Compatible.otf');
@@ -62,7 +59,18 @@
     textFont(font);
     textSize(fontSize);
     textAlign(CENTER, CENTER);
+
+    // create the material.js engine
+    engine = Engine.create();
+    // engine.gravity.y = 0.1;
+    runner = Runner.create();
+    this.myFloor = Bodies.rectangle(0, this.height/2, this.width, 10, {
+      isStatic: true
+    });
+    World.add(engine.world, this.myFloor);
+    Runner.run(runner, engine);
   }
+
   function draw() {
     clear();
     animations.forEach(anim => {
@@ -70,9 +78,48 @@
       anim.animate();
       pop();
     });
-    animations = animations.filter(a => !a.isDone());
+    fill('#ED225D');
+    drawBody(this.myFloor);
+    animations = animations.filter(a => {
+      if (a.isDone()) {
+        World.remove(engine.world, a.comp);
+      }
+      return !a.isDone();
+    });
   }
 
+  
+</script>
+<script lang="javascript">
+  class Follow {
+    _textToShow;
+    _age = 0;
+    _maxAge = 450;
+    comp;
+
+    constructor(username) {
+      this._textToShow = `New follower: ${username}`;
+      this.comp = Bodies.rectangle(0, 0, textWidth(this._textToShow) *0.75, 150, 
+      {
+        // density: 0.1
+      });
+    }
+
+    animate() {
+      fill('#666');
+      drawBody(this.comp);
+      textSize(100);
+      fill('#ED225D');
+      text(this._textToShow, this.comp.position.x, this.comp.position.y);
+      this._age++;
+    }
+
+    isDone() {
+      return this._age > this._maxAge;
+    }
+  }
+</script>
+<script lang="javascript">
   class Raid {
     _textToShow;
     _textRotation = 0;
@@ -108,6 +155,29 @@
 
     isDone() {
       return this._age > this._maxAge;
+    }
+  }
+  class Cat {
+    xPos
+    yPos
+    age = 0;
+    maxAge = 1;
+    speed = -12
+
+    constructor(xPos, yPos) {
+      this.xPos = xPos;
+      this.yPos = yPos;
+    }
+    reset() {
+      if (this.age < this.maxAge) {
+        this.xPos = xMax;
+        this.age++;
+      } else {
+        this.speed = 0;
+      }
+    }
+    move(distance) {
+      this.xPos += this.speed;
     }
   }
 </script>
