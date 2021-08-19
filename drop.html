@@ -16,7 +16,7 @@
   const Runner = Matter.Runner;
   const Constraint = Matter.Constraint;
   const Composite = Matter.Composite;
-  
+  const Vector = Matter.Vector;
   const drawBody = Helpers.drawBody;
 
   const username = 'jwalter';
@@ -71,10 +71,7 @@
      // create an engine
     engine = Engine.create();
     runner = Runner.create();
-
-    // create two boxes and a ground
-    boxA = Bodies.rectangle(200, 200, 80, 80);
-    boxB = Bodies.rectangle(270, 50, 160, 80);
+    
     rightWall = Bodies.rectangle(this.width - 10, this.height / 2, 10, this.height, {
       isStatic: true
     });
@@ -85,10 +82,7 @@
       isStatic: true
     });
     
-    ground = Bodies.rectangle(400, 500, 810, 10, {
-      isStatic: true, angle: Math.PI * 0.06
-    });
-    World.add(engine.world, [boxA, boxB, ground, rightWall, leftWall, floor]);
+    World.add(engine.world, [rightWall, leftWall, floor]);
     Runner.run(runner, engine);
   }
   function draw() {
@@ -111,12 +105,8 @@
         this.updatePlayerState(p);
       }
     });
-    fill(255);
-    drawBody(boxA);
-    drawBody(boxB);
 
     fill(128);
-    drawBody(ground);
     drawBody(rightWall);
     drawBody(leftWall);
     drawBody(floor);
@@ -146,42 +136,51 @@
     loser = false;
     color = color(random(255), random(255), random(255));
     loserColor = color(0, 42);
-    pc;
+    playerBody;
     comp;
     constructor(name) {
       this.name = name;
-      this.pc = Bodies.circle(this.x, this.y, 25, { restitution: 0.5 });
-      this.chute = Bodies.fromVertices(this.x, this.y, Vertices.fromPath('35 7 19 17 14 38 14 58 25 79 45 85 65 84 65 66 46 67 34 59 30 44 33 29 45 23 66 23 66 7 53 7'),
-      { frictionAir: 0.5 });
+      this.playerBody = Bodies.circle(this.x, this.y, 25, 
+      { 
+        restitution: 0.5,
+        density: 0.05 
+      }
+      );
+      this.chute = Bodies.fromVertices(this.x, this.y - 100, Vertices.fromPath('35 7 19 17 14 38 14 58 25 79 45 85 65 84 65 66 46 67 34 59 30 44 33 29 45 23 66 23 66 7 53 7'),
+      { frictionAir: 1.6 });
+      MBody.rotate(this.chute, Math.PI / 2);
       const constraint = Constraint.create({
         bodyA: this.chute,
-        bodyB: this.pc
+        bodyB: this.playerBody
       });
-      // MBody.applyForce(this.pc, Matter.Vector.create(0, 0), Matter.Vector.create(-0.3, 0));
       this.comp = Composite.create();
-      Composite.add(this.comp, [this.pc, this.chute, constraint]);
+      Composite.add(this.comp, [this.playerBody, this.chute, constraint]);
+      this.playerBody.force = Vector.create(5, 0);
+      this.chute.force = Vector.create(1, 0);
+      //MBody.applyForce(this.playerBody, Matter.Vector.create(0, 0), Matter.Vector.create(-0.1, 0));
+      // MBody.applyForce(this.chute, Matter.Vector.create(0, 0), Matter.Vector.create(-0.1, 0));
     }
 
     draw() {
       noStroke();
       push();
       fill(this.color);
-      drawBody(this.pc);
+      drawBody(this.playerBody);
       drawBody(this.chute);
       fill(color(0));
       textSize(width / 40);
       textAlign(CENTER, CENTER);
       stroke(this.loser ? this.loserColor : 255);
-      const { x, y } = this.pc.position;
+      const { x, y } = this.playerBody.position;
       text(this.name, x, y);
       pop();
       fill(this.loser ? this.loserColor : this.color);
-      circle(this.x, this.y, 50);
+      //circle(this.x, this.y, 50);
       fill(this.loser ? this.loserColor : color(0));
       textSize(width / 40);
       textAlign(CENTER, CENTER);
       stroke(this.loser ? this.loserColor : 255);
-      text(this.name, this.x, this.y);
+      //text(this.name, this.x, this.y);
       if (this.active) {
         this.y += this.ySpeed;
         this.x += this.xSpeed;
