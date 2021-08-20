@@ -110,6 +110,7 @@
       drawBody(this.comp);
       textSize(100);
       fill('#ED225D');
+      rotate(this.comp.angle);
       text(this._textToShow, this.comp.position.x, this.comp.position.y);
       this._age++;
     }
