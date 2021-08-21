@@ -35,6 +35,9 @@
   let leftWall;
   let ground;
   let floor;
+  let timeOfGameStart = 0;
+  let maxGameDuration = 30;
+  let gameCooldown = 5;
 
   chat.connect().then(globalUserState => {
     const channel = '#jwalter';    
@@ -51,15 +54,37 @@
           console.log("Adding circle");
           myCircles.push(new Circle());
         } else if(privateMessage.message.indexOf('!drop') === 0) {
-          const newPlayer = new Player(privateMessage.username);
-          players.push(newPlayer);
-          World.add(engine.world, newPlayer.comp);
-          // World.add(engine.world, newPlayer.chute);
+          if (newGameCanStart()) {
+            players.forEach(p => World.remove(engine.world, newPlayer.comp));
+            players = [];
+            timeOfGameStart = now();
+          }
+          if (gameIsActive() && !playerJoined(privateMessage.username)) {
+            const newPlayer = new Player(privateMessage.username);
+            players.push(newPlayer);
+            World.add(engine.world, newPlayer.comp);
+          }
         }
       })
     });
 
   });
+
+  function now() {
+    return new Date().getTime() / 1000;
+  }
+
+  function newGameCanStart() {
+    return (timeOfGameStart + maxGameDuration + gameCooldown) <= now();
+  }
+
+  function gameIsActive() {
+    return timeOfGameStart + maxGameDuration >= now();
+  }
+
+  function playerJoined(name) {
+    return players.find(p => p.name === name) !== undefined;
+  }
 
   function setup() {
     this.width = windowWidth;
@@ -88,29 +113,28 @@
   }
   function draw() {
     clear();
-    push();
-    myCircles.forEach(c => {
-      fill(c.color);
-      circle(c.x, c.y, c.radius);
-    });
-    pop();
-    push();
-    fill('#ff0000');
-    rect(this.targetX - (this.targetWidth / 2), windowHeight - this.targetHeight, this.targetWidth, this.targetHeight);
-    pop();
-    players.forEach(p => {
+    if (gameIsActive()) {
       push();
-      p.draw();
+      myCircles.forEach(c => {
+        fill(c.color);
+        circle(c.x, c.y, c.radius);
+      });
       pop();
-      // if (p.active || !p.loser) {
-      //   this.updatePlayerState(p);
-      // }
-    });
+      push();
+      fill('#ff0000');
+      rect(this.targetX - (this.targetWidth / 2), windowHeight - this.targetHeight, this.targetWidth, this.targetHeight);
+      pop();
+      players.forEach(p => {
+        push();
+        p.draw();
+        pop();
+      });
 
-    fill(128);
-    drawBody(rightWall);
-    drawBody(leftWall);
-    drawBody(floor);
+      fill(128);
+      drawBody(rightWall);
+      drawBody(leftWall);
+      drawBody(floor);
+    }
   }
 
   function updatePlayerState(player) {
