@@ -163,14 +163,14 @@
       const leftConstraint = Constraint.create({
         bodyA: this.chute,
         bodyB: this.playerBody,
-        pointA: Vector.create(-10, 0),
-        pointB: Vector.create(-5, 0)
+        pointA: Vector.create(-20, 0),
+        pointB: Vector.create(-10, 0)
       });
       const rightConstraint = Constraint.create({
         bodyA: this.chute,
         bodyB: this.playerBody,
-        pointA: Vector.create(10, 0),
-        pointB: Vector.create(5, 0)
+        pointA: Vector.create(20, 0),
+        pointB: Vector.create(10, 0)
       });
       this.comp = Composite.create();
       Composite.add(this.comp, [this.playerBody, this.chute, leftConstraint, rightConstraint]);
@@ -199,15 +199,16 @@
       drawBody(this.chute);
       fill(this.loser ? this.loserColor : color(0));
       stroke(this.loser ? this.loserColor : 255);
-      textSize(width / 40);
+      textSize(width / 80);
       textAlign(CENTER, CENTER);
       const { x, y } = this.playerBody.position;
       push();
       translate(x, y);
-      rotate(this.playerBody.angle);
+      // rotate(this.playerBody.angle);
       text(this.name, 0, 0);
       pop();
       if (this.score !== undefined) {
+        textSize(width / 40);
         text(this.score, x, y - 50);
       }
     }
