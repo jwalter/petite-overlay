@@ -7,6 +7,7 @@
 <script src="libraries/matter.js"></script>
 <script src="libraries/helpers.js"></script>
 <script lang="javascript">
+  const token = 'd6e9352aad4001c8208b3d3bfff374225b88e173';
   const Engine = Matter.Engine;
   const Render = Matter.Render;
   const World = Matter.World;
@@ -54,13 +55,17 @@
           console.log("Adding circle");
           myCircles.push(new Circle());
         } else if(privateMessage.message.indexOf('!drop') === 0) {
+          let emote = undefined;
+          if (privateMessage.tags.emotes.length > 0) {
+            emote = privateMessage.tags.emotes[0].id;
+          }
           if (newGameCanStart()) {
-            players.forEach(p => World.remove(engine.world, newPlayer.comp));
+            players.forEach(p => World.remove(engine.world, p.comp));
             players = [];
             timeOfGameStart = now();
           }
           if (gameIsActive() && !playerJoined(privateMessage.username)) {
-            const newPlayer = new Player(privateMessage.username);
+            const newPlayer = new Player(privateMessage.username, emote);
             players.push(newPlayer);
             World.add(engine.world, newPlayer.comp);
           }
@@ -170,9 +175,13 @@
     playerBody;
     comp;
     chuteForce = random(-0.1, 0.1);
+    image;
 
-    constructor(name) {
+    constructor(name, emote) {
       this.name = name;
+      if (emote) {
+        this.image = loadImage(`https://static-cdn.jtvnw.net/emoticons/v2/${emote}/static/light/2.0`);
+      }
       this.playerBody = Bodies.circle(this.x, this.y, 25, 
       { 
         restitution: 0.5,
@@ -226,6 +235,9 @@
       textSize(width / 80);
       textAlign(CENTER, CENTER);
       const { x, y } = this.playerBody.position;
+      if (this.image) {
+        image(this.image, x, y);
+      }
       push();
       translate(x, y);
       // rotate(this.playerBody.angle);
