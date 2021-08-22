@@ -55,16 +55,17 @@
           console.log("Adding circle");
           myCircles.push(new Circle());
         } else if(privateMessage.message.indexOf('!drop') === 0) {
-          let emote = undefined;
-          if (privateMessage.tags.emotes.length > 0) {
-            emote = privateMessage.tags.emotes[0].id;
-          }
           if (newGameCanStart()) {
             players.forEach(p => World.remove(engine.world, p.comp));
             players = [];
+            highScorer = undefined;
             timeOfGameStart = now();
           }
           if (gameIsActive() && !playerJoined(privateMessage.username)) {
+            let emote = undefined;
+            if (privateMessage.tags.emotes.length > 0) {
+              emote = privateMessage.tags.emotes[0].id;
+            }
             const newPlayer = new Player(privateMessage.username, emote);
             players.push(newPlayer);
             World.add(engine.world, newPlayer.comp);
@@ -143,7 +144,6 @@
   }
 
   function updatePlayerState(player) {
-    //if (player.y > windowHeight - this.targetHeight) {
       let score;
       if (player.score === undefined) {
         score = round(100 - abs(this.targetX - player.playerBody.position.x), 2);
@@ -151,15 +151,16 @@
         player.score = score;
         player.active = false;
       }
-      if (this.highScorer === undefined || this.highScorer.score < player.score) {
-        if (this.highScorer !== undefined) {
-          this.highScorer.loser = true;
+      if (highScorer === undefined || highScorer.score < player.score) {
+        if (highScorer !== undefined) {
+          highScorer.loser = true;
         }
-        this.highScorer = player;
-      } else if (this.highScorer !== player) {
+        console.log(`We have a NEW highscore`);
+        highScorer = player;
+      } else if (highScorer !== player) {
+        console.log(`We have a loser`);
         player.loser = true;
       }
-    //}
   }
 
   class Player {
@@ -226,22 +227,28 @@
       this.playerBody.force = Vector.create(this.chuteForc * 0.5, 0);
 
       noStroke();
+      if (this.loser) {
+        console.log("LOSER");
+      }
       fill(this.loser ? this.loserColor : this.color);
 
-      drawBody(this.playerBody);
+      if (!this.image) {
+        drawBody(this.playerBody);
+      }
       drawBody(this.chute);
       fill(this.loser ? this.loserColor : color(0));
       stroke(this.loser ? this.loserColor : 255);
-      textSize(width / 80);
+      textSize(width / 70);
       textAlign(CENTER, CENTER);
       const { x, y } = this.playerBody.position;
-      if (this.image) {
-        image(this.image, x, y);
-      }
+
       push();
       translate(x, y);
-      // rotate(this.playerBody.angle);
-      text(this.name, 0, 0);
+      rotate(this.playerBody.angle);
+      if (this.image) {
+        image(this.image, 0 - this.image.width / 2, 0 - this.image.height / 2);
+      }
+      text(this.name, 0, 50);
       pop();
       if (this.score !== undefined) {
         textSize(width / 40);
