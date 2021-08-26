@@ -19,6 +19,7 @@
   const Composite = Matter.Composite;
   const Vector = Matter.Vector;
   const Query = Matter.Query;
+  const Sleeping = Matter.Sleeping;
   const drawBody = Helpers.drawBody;
 
   const username = 'jwalter';
@@ -50,7 +51,6 @@
 
       chat.on('PRIVMSG', privateMessage => {
         console.dir(privateMessage.message);
-        console.log(privateMessage.message.indexOf('!circle'));
         if (privateMessage.message.indexOf('!circle') === 0) {
           console.log("Adding circle");
           const commandParts = privateMessage.message.split(" ");
@@ -64,14 +64,17 @@
           for (let index = 0; index < circleCount; index++) {
             const c = new Circle();
             myCircles.push(c);
-            const physicalCircle = Bodies.circle(c.x, c.y, c.radius / 2, 
-              { 
-                isStatic: true
-              }
-            );
-            World.add(engine.world, physicalCircle);
+            World.add(engine.world, c.body);
           }
-
+        } else if (privateMessage.message.indexOf('!fall') === 0) {
+          myCircles.forEach(c => {
+            Sleeping.set(c.body, false);
+          });
+        } else if (privateMessage.message.indexOf('!clear') === 0) {
+          myCircles.forEach(c => {
+            World.remove(engine.world, c.body)
+          });
+          myCircles = [];
         } else if(privateMessage.message.indexOf('!drop') === 0) {
           if (newGameCanStart()) {
             players.forEach(p => World.remove(engine.world, p.comp));
@@ -141,7 +144,7 @@
       push();
       myCircles.forEach(c => {
         fill(c.color);
-        circle(c.x, c.y, c.radius);
+        circle(c.body.position.x, c.body.position.y, c.radius);
       });
       pop();
       push();
@@ -280,6 +283,12 @@
     y = random(windowHeight);
     radius = random(10, 200);
     color = color(random(255), random(255), random(255));
+    body;
+
+    constructor() {
+      this.body = Bodies.circle(this.x, this.y, this.radius / 2);
+      Sleeping.set(this.body, true);
+    }
   }
 
 </script>
