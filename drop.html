@@ -286,7 +286,11 @@
     body;
 
     constructor() {
-      this.body = Bodies.circle(this.x, this.y, this.radius / 2);
+      this.body = Bodies.circle(this.x, this.y, this.radius / 2,
+      { 
+        restitution: 1.2
+      });
+      
       Sleeping.set(this.body, true);
     }
   }
