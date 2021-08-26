@@ -37,7 +37,7 @@
   let ground;
   let floor;
   let timeOfGameStart = 0;
-  let maxGameDuration = 30;
+  let maxGameDuration = 60;
   let gameCooldown = 5;
 
   chat.connect().then(globalUserState => {
@@ -53,7 +53,25 @@
         console.log(privateMessage.message.indexOf('!circle'));
         if (privateMessage.message.indexOf('!circle') === 0) {
           console.log("Adding circle");
-          myCircles.push(new Circle());
+          const commandParts = privateMessage.message.split(" ");
+          let circleCount = 1;
+          if (commandParts.length > 1) {
+            circleCount = parseInt(commandParts[1]);
+            if (!isNaN(circleCount)) {
+              circleCount = min(100, circleCount);
+            }
+          }
+          for (let index = 0; index < circleCount; index++) {
+            const c = new Circle();
+            myCircles.push(c);
+            const physicalCircle = Bodies.circle(c.x, c.y, c.radius / 2, 
+              { 
+                isStatic: true
+              }
+            );
+            World.add(engine.world, physicalCircle);
+          }
+
         } else if(privateMessage.message.indexOf('!drop') === 0) {
           if (newGameCanStart()) {
             players.forEach(p => World.remove(engine.world, p.comp));
