@@ -134,8 +134,11 @@
     floor = Bodies.rectangle(this.width /2 , this.height  - 10, this.width, 10, {
       isStatic: true
     });
+    const fatHead = Bodies.circle(this.width, this.height, 400, {
+      isStatic: true
+    });
     
-    World.add(engine.world, [rightWall, leftWall, floor]);
+    World.add(engine.world, [rightWall, leftWall, floor, fatHead]);
     Runner.run(runner, engine);
   }
   function draw() {
