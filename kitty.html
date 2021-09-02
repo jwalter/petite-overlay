@@ -15,7 +15,7 @@
   
   const drawBody = Helpers.drawBody;
 
-  const token = '8b17c15a6041ade4afcc9440fc9e349ca36848e1';
+  const token = 'd6e9352aad4001c8208b3d3bfff374225b88e173';
   const tau = new WebSocket('ws://localhost:8000/ws/twitch-events/');
   
   let font;
@@ -66,7 +66,7 @@
 
     // create the material.js engine
     engine = Engine.create();
-    // engine.gravity.y = 0.1;
+
     runner = Runner.create();
     this.myFloor = Bodies.rectangle(0, this.height/2, this.width, 10, {
       isStatic: true
