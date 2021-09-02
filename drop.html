@@ -76,26 +76,32 @@
           });
           myCircles = [];
         } else if(privateMessage.message.indexOf('!drop') === 0) {
-          if (newGameCanStart()) {
-            players.forEach(p => World.remove(engine.world, p.comp));
-            players = [];
-            highScorer = undefined;
-            timeOfGameStart = now();
-          }
-          if (gameIsActive() && !playerJoined(privateMessage.username)) {
-            let emote = undefined;
-            if (privateMessage.tags.emotes.length > 0) {
-              emote = privateMessage.tags.emotes[0].id;
-            }
-            const newPlayer = new Player(privateMessage.username, emote);
-            players.push(newPlayer);
-            World.add(engine.world, newPlayer.comp);
-          }
+          handleDropCommand(privateMessage);
+        } else if(privateMessage.message.indexOf('!disco') === 0) {
+          handleDropCommand(privateMessage, true);
         }
       })
     });
 
   });
+
+  function handleDropCommand(privateMessage, disco = false) {
+    if (newGameCanStart()) {
+      players.forEach(p => World.remove(engine.world, p.comp));
+      players = [];
+      highScorer = undefined;
+      timeOfGameStart = now();
+    }
+    if (gameIsActive() && !playerJoined(privateMessage.username)) {
+      let emote = undefined;
+      if (privateMessage.tags.emotes.length > 0) {
+        emote = privateMessage.tags.emotes[0].id;
+      }
+      const newPlayer = new Player(privateMessage.username, emote, disco);
+      players.push(newPlayer);
+      World.add(engine.world, newPlayer.comp);
+    }
+  }
 
   function now() {
     return new Date().getTime() / 1000;
@@ -196,17 +202,21 @@
     active = true;
     loser = false;
     color = color(random(255), random(255), random(255));
+    dr = random(-3, 3);
+    dg = random(-3, 3);
+    db = random(-3, 3);
     loserColor = color(0, 42);
     playerBody;
     comp;
     chuteForce = random(-0.1, 0.1);
     image;
 
-    constructor(name, emote) {
+    constructor(name, emote, disco = false) {
       this.name = name;
       if (emote) {
         this.image = loadImage(`https://static-cdn.jtvnw.net/emoticons/v2/${emote}/static/light/2.0`);
       }
+      this.disco = disco;
       this.playerBody = Bodies.circle(this.x, this.y, 25, 
       { 
         restitution: 0.5,
@@ -235,6 +245,23 @@
       //this.playerBody.force = Vector.create(0.1, 0);
       //this.chute.force = Vector.create(0.1, 0);
     }
+    
+    updateDelta(deltaValue, rgbValue) {
+      if (rgbValue >= 255 || rgbValue <= 0) {
+        return deltaValue * -1;
+      }
+      return deltaValue;
+    }
+
+    updateColor() {
+      if (this.disco) {
+        this.dr = this.updateDelta(this.dr, this.color.levels[0]);
+        this.dg = this.updateDelta(this.dg, this.color.levels[1]);
+        this.db = this.updateDelta(this.db, this.color.levels[2]);
+        let [r,g,b] = [this.color.levels[0] + this.dr, this.color.levels[1] + this.dg, this.color.  levels[2] + this.db];
+        this.color = color(r,g,b);
+      }
+    }
 
     draw() {
       const chuteCollisions = Query.collides(this.chute, [rightWall, leftWall]);
@@ -254,6 +281,7 @@
       if (this.loser) {
         console.log("LOSER");
       }
+      this.updateColor();
       fill(this.loser ? this.loserColor : this.color);
 
       if (!this.image) {
