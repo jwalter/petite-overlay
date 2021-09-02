@@ -143,13 +143,13 @@
   }
   function draw() {
     clear();
-    if (gameIsActive()) {
-      push();
+    push();
       myCircles.forEach(c => {
         fill(c.color);
         circle(c.body.position.x, c.body.position.y, c.radius);
       });
       pop();
+    if (gameIsActive()) {
       push();
       fill('#ff0000');
       rect(this.targetX - (this.targetWidth / 2), windowHeight - this.targetHeight, this.targetWidth, this.targetHeight);
