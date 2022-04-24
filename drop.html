@@ -1,13 +1,30 @@
-<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css">
-<script src="//unpkg.com/twitch-js@>2.0.0-beta.31"></script>
+<link
+  rel="stylesheet"
+  href="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
-<script src="token.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.4.1/lib/p5.js"></script>
 <script src="libraries/matter.js"></script>
 <script src="libraries/helpers.js"></script>
 <script lang="javascript">
-  const token = 'd6e9352aad4001c8208b3d3bfff374225b88e173';
+  class Circle {
+    x = random(windowWidth);
+    y = random(windowHeight);
+    radius = random(10, 200);
+    color = color(random(255), random(255), random(255), 128);
+    body;
+
+    constructor() {
+      this.body = Bodies.circle(this.x, this.y, this.radius / 2,
+      {
+        restitution: 1.2
+      });
+
+      Sleeping.set(this.body, true);
+    }
+  }
   const Engine = Matter.Engine;
   const Render = Matter.Render;
   const World = Matter.World;
@@ -23,8 +40,8 @@
   const drawBody = Helpers.drawBody;
 
   const username = 'jwalter';
-  const { chat } = new window.TwitchJs({ username, token: twitchToken });
-  let myCircles = [];
+  ComfyJS.Init("jwalter");
+  var myCircles = [];
   let players = [];
   let targetX = 0;
   let targetWidth;
@@ -33,71 +50,75 @@
 
   let boxA;
   let boxB;
-  let rightWall;
-  let leftWall;
-  let ground;
-  let floor;
-  let timeOfGameStart = 0;
-  let maxGameDuration = 60;
-  let gameCooldown = 5;
+  var rightWall;
+  var leftWall;
+  var ground;
+  var myFloor;
+  var timeOfGameStart = 0;
+  var maxGameDuration = 60;
+  var gameCooldown = 5;
 
-  chat.connect().then(globalUserState => {
-    const channel = '#jwalter';    
-    chat.join(channel).then(channelState => {
-      toastr.options = {
-        "positionClass": "toast-bottom-right",
-        "newestOnTop": false,
+  ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
+        if( flags.broadcaster && command === "test" ) {
+          console.log( "!test was typed in chat" );
+        } else if (command.indexOf("circle") === 0) {
+          handleCircleCommand(message);
+        } else if (command.indexOf("fall") === 0) {
+          handleFallCommand();
+        } else if (command.indexOf("clear") === 0) {
+          handleClearCommand();
+        } else if (command.indexOf("drop") === 0) {
+          handleDropCommand(user, message, extra);
+        } else if (command.indexOf("drop") === 0) {
+          handleDropCommand(user, message, extra, true);
+        }
+      };
+
+  function handleCircleCommand(message) {
+    console.log("Adding circle");
+    const commandParts = message.split(" ");
+    let circleCount = 1;
+    if (commandParts.length > 0) {
+      circleCount = parseInt(commandParts[0]);
+      if (!isNaN(circleCount)) {
+        circleCount = min(100, circleCount);
       }
+    }
+    for (let index = 0; index < circleCount; index++) {
+      const c = new Circle();
+      myCircles.push(c);
+      World.add(engine.world, c.body);
+    }
+  }
 
-      chat.on('PRIVMSG', privateMessage => {
-        console.dir(privateMessage.message);
-        if (privateMessage.message.indexOf('!circle') === 0) {
-          console.log("Adding circle");
-          const commandParts = privateMessage.message.split(" ");
-          let circleCount = 1;
-          if (commandParts.length > 1) {
-            circleCount = parseInt(commandParts[1]);
-            if (!isNaN(circleCount)) {
-              circleCount = min(100, circleCount);
-            }
-          }
-          for (let index = 0; index < circleCount; index++) {
-            const c = new Circle();
-            myCircles.push(c);
-            World.add(engine.world, c.body);
-          }
-        } else if (privateMessage.message.indexOf('!fall') === 0) {
-          myCircles.forEach(c => {
+  function handleFallCommand() {
+    myCircles.forEach(c => {
             Sleeping.set(c.body, false);
           });
-        } else if (privateMessage.message.indexOf('!clear') === 0) {
-          myCircles.forEach(c => {
-            World.remove(engine.world, c.body)
-          });
-          myCircles = [];
-        } else if(privateMessage.message.indexOf('!drop') === 0) {
-          handleDropCommand(privateMessage);
-        } else if(privateMessage.message.indexOf('!disco') === 0) {
-          handleDropCommand(privateMessage, true);
-        }
-      })
+  }
+  function handleClearCommand() {
+    myCircles.forEach(c => {
+      World.remove(engine.world, c.body)
     });
-
-  });
-
-  function handleDropCommand(privateMessage, disco = false) {
+    myCircles = [];
+  }
+  function handleDropCommand(user, message, extra, disco = false) {
     if (newGameCanStart()) {
       players.forEach(p => World.remove(engine.world, p.comp));
       players = [];
       highScorer = undefined;
       timeOfGameStart = now();
     }
-    if (gameIsActive() && !playerJoined(privateMessage.username)) {
+    if (gameIsActive() && !playerJoined(user)) {
       let emote = undefined;
-      if (privateMessage.tags.emotes.length > 0) {
-        emote = privateMessage.tags.emotes[0].id;
+      if (extra.messageEmotes) {
+        emote = Object.keys(extra.messageEmotes)[0];
       }
-      const newPlayer = new Player(privateMessage.username, emote, disco);
+      let emoji = undefined;
+      if (message && isEmoji(message.codePointAt(0))) {
+        emoji = Array.from(message)[0]
+      }
+      const newPlayer = new Player(user, emote, emoji, disco);
       players.push(newPlayer);
       World.add(engine.world, newPlayer.comp);
     }
@@ -130,31 +151,33 @@
      // create an engine
     engine = Engine.create();
     runner = Runner.create();
-    
-    rightWall = Bodies.rectangle(this.width - 10, this.height / 2, 10, this.height, {
-      isStatic: true
-    });
+
     leftWall = Bodies.rectangle(0, this.height / 2, 10, this.height, {
       isStatic: true
     });
-    floor = Bodies.rectangle(this.width /2 , this.height  - 10, this.width, 10, {
+    rightWall = Bodies.rectangle(this.width - 10, this.height / 2, 10, this.height, {
+      isStatic: true
+    });
+    myFloor = Bodies.rectangle(this.width /2 , this.height  - 10, this.width, 10, {
       isStatic: true
     });
     const fatHead = Bodies.circle(this.width, this.height, 400, {
       isStatic: true
     });
-    
-    World.add(engine.world, [rightWall, leftWall, floor, fatHead]);
+
+    World.add(engine.world, [rightWall, leftWall, myFloor, fatHead]);
     Runner.run(runner, engine);
   }
   function draw() {
     clear();
     push();
+    if (myCircles) {
       myCircles.forEach(c => {
         fill(c.color);
         circle(c.body.position.x, c.body.position.y, c.radius);
       });
-      pop();
+    }
+    pop();
     if (gameIsActive()) {
       push();
       fill('#ff0000');
@@ -169,7 +192,7 @@
       fill(128);
       drawBody(rightWall);
       drawBody(leftWall);
-      drawBody(floor);
+      drawBody(myFloor);
     }
   }
 
@@ -201,7 +224,7 @@
     name;
     active = true;
     loser = false;
-    color = color(random(255), random(255), random(255));
+    color = color(random(255), random(255), random(255), 128);
     dr = random(-3, 3);
     dg = random(-3, 3);
     db = random(-3, 3);
@@ -210,22 +233,24 @@
     comp;
     chuteForce = random(-0.1, 0.1);
     image;
+    emoji;
 
-    constructor(name, emote, disco = false) {
+    constructor(name, emote, emoji, disco = false) {
       this.name = name;
+      this.emoji = emoji;
       if (emote) {
-        this.image = loadImage(`https://static-cdn.jtvnw.net/emoticons/v2/${emote}/static/light/2.0`);
+        this.image = loadImage(`https://static-cdn.jtvnw.net/emoticons/v2/${emote}/static/light/3.0`);
       }
       this.disco = disco;
-      this.playerBody = Bodies.circle(this.x, this.y, 25, 
-      { 
+      this.playerBody = Bodies.circle(this.x, this.y, 25,
+      {
         restitution: 0.5,
         density: 0.01
       }
       );
       this.chute = Bodies.fromVertices(this.x, this.y - 100, Vertices.fromPath('35 7 19 17 14 38 14 58 25 79 45 85 65 84 65 66 46 67 34 59 30 44 33 29 45 23 66 23 66 7 53 7'),
-      { 
-        frictionAir: 1 
+      {
+        frictionAir: 1
       });
       MBody.rotate(this.chute, Math.PI / 2);
       const leftConstraint = Constraint.create({
@@ -245,7 +270,7 @@
       //this.playerBody.force = Vector.create(0.1, 0);
       //this.chute.force = Vector.create(0.1, 0);
     }
-    
+
     updateDelta(deltaValue, rgbValue) {
       if (rgbValue >= 255 || rgbValue <= 0) {
         return deltaValue * -1;
@@ -259,13 +284,13 @@
         this.dg = this.updateDelta(this.dg, this.color.levels[1]);
         this.db = this.updateDelta(this.db, this.color.levels[2]);
         let [r,g,b] = [this.color.levels[0] + this.dr, this.color.levels[1] + this.dg, this.color.  levels[2] + this.db];
-        this.color = color(r,g,b);
+        this.color = color(r,g,b, 128);
       }
     }
 
     draw() {
       const chuteCollisions = Query.collides(this.chute, [rightWall, leftWall]);
-      const bodyCollisions = Query.collides(this.playerBody, [floor]);
+      const bodyCollisions = Query.collides(this.playerBody, [myFloor]);
       if (bodyCollisions.length > 0) {
         this.chuteForce = 0;
         MBody.setStatic(this.chute, true);
@@ -284,7 +309,7 @@
       this.updateColor();
       fill(this.loser ? this.loserColor : this.color);
 
-      if (!this.image) {
+      if (!this.image && !this.emoji) {
         drawBody(this.playerBody);
       }
       drawBody(this.chute);
@@ -300,7 +325,15 @@
       if (this.image) {
         image(this.image, 0 - this.image.width / 2, 0 - this.image.height / 2);
       }
+      if (this.emoji) {
+        push();
+        textSize(width / 20);
+        text(this.emoji, 0, 0);
+        pop();
+      }
       text(this.name, 0, 50);
+      textSize(width / 30);
+      // text("💀", 0, 0);
       pop();
       if (this.score !== undefined) {
         textSize(width / 40);
@@ -309,21 +342,8 @@
     }
   }
 
-  class Circle {
-    x = random(windowWidth);
-    y = random(windowHeight);
-    radius = random(10, 200);
-    color = color(random(255), random(255), random(255));
-    body;
-
-    constructor() {
-      this.body = Bodies.circle(this.x, this.y, this.radius / 2,
-      { 
-        restitution: 1.2
-      });
-      
-      Sleeping.set(this.body, true);
-    }
+  function isEmoji(codePoint) {
+    const maybeEmoji = String.fromCodePoint(codePoint);
+    return /(?:[\u2700-\u27bf]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\u0023-\u0039]\ufe0f?\u20e3|\u3299|\u3297|\u303d|\u3030|\u24c2|\ud83c[\udd70-\udd71]|\ud83c[\udd7e-\udd7f]|\ud83c\udd8e|\ud83c[\udd91-\udd9a]|\ud83c[\udde6-\uddff]|[\ud83c\ude01-\ude02]|\ud83c\ude1a|\ud83c\ude2f|[\ud83c\ude32-\ude3a]|[\ud83c\ude50-\ude51]|\u203c|\u2049|[\u25aa-\u25ab]|\u25b6|\u25c0|[\u25fb-\u25fe]|\u00a9|\u00ae|\u2122|\u2139|\ud83c\udc04|[\u2600-\u26FF]|\u2b05|\u2b06|\u2b07|\u2b1b|\u2b1c|\u2b50|\u2b55|\u231a|\u231b|\u2328|\u23cf|[\u23e9-\u23f3]|[\u23f8-\u23fa]|\ud83c\udccf|\u2934|\u2935|[\u2190-\u21ff])/.test(maybeEmoji);
   }
-
 </script>
